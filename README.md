@@ -19,11 +19,12 @@ A simple bash script for managing your `/etc/hosts` file with ease.
 
 ```bash
 # Direct installation
-curl -sSL https://raw.githubusercontent.com/ErvisTusha/hosts/main/hosts.sh | sudo bash -s install
+curl -sSL https://raw.githubusercontent.com/ErvisTusha/hosts/main/hosts.sh | sudo /bin/bash -s install
 
 # Or clone and install
 git clone https://github.com/ErvisTusha/hosts.git
 cd hosts
+chmod +x hosts.sh
 ./hosts.sh install
 ```
 
