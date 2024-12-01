@@ -35,7 +35,7 @@ NC='\033[0m'
 BOLD='\033[1m'
 YELLOW='\033[1;33m'
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 AUTHOR="Ervis Tusha"
 SCRIPT=$(basename "$0")
 REPO_URL="https://raw.githubusercontent.com/ErvisTusha/hosts/main/hosts.sh"
@@ -221,7 +221,8 @@ ADD_HOST() {
     CHECK_PERMISSIONS
     BACKUP_HOSTS
 
-    if grep -q "^$IP[[:space:]].*$DOMAIN" /etc/hosts; then
+    # Enhanced duplicate detection for IPv6 entries
+    if grep -qi "^$IP[[:space:]]\+$DOMAIN$" /etc/hosts; then
         echo -e "\n${YELLOW}${BOLD}Warning:${NC} Entry already exists $IP $DOMAIN\n"
         LIST_HOSTS
         exit 1
@@ -306,7 +307,7 @@ REMOVE_HOST() {
             fi
         else
             # Domain removal
-            sudo sed -i "/$TARGET[[:space:]]*$/d" /etc/hosts
+            sudo sed -i "/ $TARGET[[:space:]]*$/d" /etc/hosts
         fi
     fi
 
@@ -427,11 +428,15 @@ BATCH_ADD_HOSTS() {
     local FILE=$1
     local SUCCESS=0
     local FAILED=0
+    local SKIPPED=0
 
     if [ ! -f "$FILE" ]; then
         echo -e "\n${RED}${BOLD}Error:${NC} File not found: $FILE\n"
-        exit 1  # Changed from return 1 to exit 1 to ensure proper error propagation
+        exit 1
     fi
+
+    CHECK_PERMISSIONS
+    BACKUP_HOSTS
 
     while IFS= read -r LINE || [ -n "$LINE" ]; do
         # Skip comments and empty lines
@@ -441,17 +446,36 @@ BATCH_ADD_HOSTS() {
         local IP=$(echo "$LINE" | awk '{print $1}')
         local DOMAIN=$(echo "$LINE" | awk '{$1=""; print $0}' | xargs)
 
-        if ADD_HOST "$IP" "$DOMAIN" >/dev/null 2>&1; then
+        # Skip if invalid IP or domain
+        if ! VALIDATE_IP "$IP" || ! VALIDATE_DOMAIN "$DOMAIN"; then
+            ((FAILED++))
+            echo -e "${RED}${BOLD}Failed:${NC} Invalid format - $IP $DOMAIN"
+            continue
+        fi
+
+        # Check for existing entry
+        if grep -q "^$IP[[:space:]].*$DOMAIN" /etc/hosts; then
+            ((SKIPPED++))
+            echo -e "${YELLOW}${BOLD}Skipped:${NC} Duplicate entry - $IP $DOMAIN"
+            continue
+        fi
+
+        # Add the entry
+        if echo "$IP $DOMAIN" | sudo tee -a /etc/hosts >/dev/null; then
             ((SUCCESS++))
+            echo -e "${GREEN}${BOLD}Added:${NC} $IP $DOMAIN"
         else
             ((FAILED++))
-            echo -e "${RED}${BOLD}Failed:${NC} $IP $DOMAIN"
+            echo -e "${RED}${BOLD}Failed:${NC} Could not add - $IP $DOMAIN"
         fi
     done < "$FILE"
 
     echo -e "\n${GREEN}${BOLD}Batch operation completed:${NC}"
     echo -e "Success: $SUCCESS"
+    echo -e "Skipped: $SKIPPED"
     echo -e "Failed: $FAILED\n"
+
+    LIST_HOSTS
 }
 
 SHOW_BANNER

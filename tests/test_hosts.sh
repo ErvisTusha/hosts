@@ -91,7 +91,7 @@ run_test "Remove by ID" "
 # IPv6 host manipulation tests
 run_test "List IPv6 Entries" "sudo ./hosts.sh list | grep -i '2001:DB8'"
 run_test "Remove IPv6 by Address" "sudo ./hosts.sh rm 2001:db8::1 && ! grep '2001:db8::1' /etc/hosts"
-run_test "Remove IPv6 by Domain" "sudo ./hosts.sh rm ipv6.test && ! grep 'ipv6.test' /etc/hosts"
+run_test "Remove IPv6 by Domain" "sudo ./hosts.sh rm *ipv6.test && ! grep 'ipv6.test' /etc/hosts"
 
 run_test "Empty IP" "! sudo ./hosts.sh add '' test.local"
 run_test "Empty Domain" "! sudo ./hosts.sh add 1.1.1.1 ''"
